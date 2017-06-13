@@ -22,7 +22,9 @@ then
     exit 1
 fi
 
-for ARCH in armeabi armeabi-v7a x86 mips; do
+: ${ARCHS="armeabi armeabi-v7a x86 mip"}
+
+for ARCH in $ARCHS; do
 
 cd $BUILDDIR
 mkdir -p $ARCH
