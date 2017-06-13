@@ -50,7 +50,7 @@ cd $BUILDDIR/$ARCH
 
 	[ -e ../libiconv-1.14.tar.gz ] || curl -L http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.14.tar.gz -o ../libiconv-1.14.tar.gz || exit 1
 
-	tar xvf ../libiconv-1.14.tar.gz
+	tar xf ../libiconv-1.14.tar.gz
 
 	cd libiconv-1.14
 
@@ -65,7 +65,7 @@ cd $BUILDDIR/$ARCH
 		./configure \
 		--host=arm-linux-androideabi \
 		--prefix=`pwd`/.. \
-		--enable-static --enable-shared \
+		--enable-static --disable-shared \
 		|| exit 1
 
 	env PATH=`pwd`:$PATH \
@@ -79,9 +79,12 @@ cd $BUILDDIR/$ARCH
 	cd ..
 
 	for f in libiconv libcharset; do
-		cp -f lib/$f.so ./
-		$BUILDDIR/setCrossEnvironment-$ARCH.sh \
-			sh -c '$STRIP'" $f.so"
+		if [ -f lib/$f.so ]
+		then
+			cp -f lib/$f.so ./
+			$BUILDDIR/setCrossEnvironment-$ARCH.sh \
+				sh -c '$STRIP'" $f.so"
+		fi
 	done
 
 } || exit 1
@@ -93,21 +96,29 @@ cd $BUILDDIR/$ARCH
 [ ${ENABLE_ICU=1} = 0 ] || [ -e libicuuc.so ] || {
 
 	[ -e ../icu4c-52_1-src.tgz ] || curl http://pkgs.fedoraproject.org/repo/pkgs/icu/icu4c-52_1-src.tgz/9e96ed4c1d99c0d14ac03c140f9f346c/icu4c-52_1-src.tgz -o ../icu4c-52_1-src.tgz || exit 1
-
-	tar xvf ../icu4c-52_1-src.tgz
+        
+	tar xf ../icu4c-52_1-src.tgz
 
 	cd icu/source
 
 	cp -f $BUILDDIR/config.sub .
 	cp -f $BUILDDIR/config.guess .
 
-	[ -d cross ] || {
-		mkdir cross
-		cd cross
-		../configure || exit 1
-		make -j$NCPU VERBOSE=1 || exit 1
-		cd ..
-	} || exit 1
+	[ -d cross ] || mkdir cross
+	cd cross
+
+        : ${HOST_CC=$(which gcc)}
+        : ${HOST_CC=$(which clang)}
+
+        : ${HOST_CXX=$(which g++)}
+        : ${HOST_CXX=$(which clang++)}
+
+	CC="$HOST_CC" CXX="$HOST_CXX" ../configure \
+           --disable-tests \
+           --disable-samples \
+            || exit 1
+	make -j$NCPU || exit 1
+	cd ..
 
 	sed -i "s@LD_SONAME *=.*@LD_SONAME =@g" config/mh-linux
 	sed -i "s%ln -s *%cp -f \$(dir \$@)/%g" config/mh-linux
@@ -120,15 +131,14 @@ cd $BUILDDIR/$ARCH
 		--host=arm-linux-androideabi \
 		--prefix=`pwd`/../../ \
 		--with-cross-build=`pwd`/cross \
-		--enable-static --enable-shared \
-		--with-data-packaging=archive \
+		--enable-static --disable-shared \
 		|| exit 1
 
 	sed -i "s@^prefix *= *.*@prefix = .@" icudefs.mk || exit 1
 
 	env PATH=`pwd`:$PATH \
 		$BUILDDIR/setCrossEnvironment-$ARCH.sh \
-		make -j$NCPU VERBOSE=1 || exit 1
+		make -j$NCPU || exit 1
 
 	sed -i "s@^prefix *= *.*@prefix = `pwd`/../../@" icudefs.mk || exit 1
 
@@ -137,10 +147,17 @@ cd $BUILDDIR/$ARCH
 		make V=1 install || exit 1
 
 	for f in libicudata libicutest libicui18n libicuio libicule libiculx libicutu libicuuc; do
-		cp -f -H ../../lib/$f.so ../../
-		cp -f ../../lib/$f.a ../../
-		$BUILDDIR/setCrossEnvironment-$ARCH.sh \
-			sh -c '$STRIP'" ../../$f.so"
+		if [ -f ../../lib/$f.so ]
+		then
+			cp -f -H ../../lib/$f.so ../../
+			$BUILDDIR/setCrossEnvironment-$ARCH.sh \
+				sh -c '$STRIP'" ../../$f.so"
+		fi
+
+		if [ -f ../../lib/$f.a ]
+		then
+			cp -f ../../lib/$f.a ../../
+		fi
 	done
 
 } || exit 1
