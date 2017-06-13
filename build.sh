@@ -44,7 +44,7 @@ cd $BUILDDIR/$ARCH
 
 # =========== libiconv.so ===========
 
-[ -e libiconv.so ] || {
+[ ${ENABLE_ICONV=1} = 0 ] || [ -e libiconv.so ] || {
 
 	[ -e ../libiconv-1.14.tar.gz ] || curl -L http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.14.tar.gz -o ../libiconv-1.14.tar.gz || exit 1
 
@@ -88,7 +88,7 @@ cd $BUILDDIR/$ARCH
 
 # =========== libicuXX.so ===========
 
-[ -e libicuuc.so ] || {
+[ ${ENABLE_ICU=1} = 0 ] || [ -e libicuuc.so ] || {
 
 	[ -e ../icu4c-52_1-src.tgz ] || curl http://pkgs.fedoraproject.org/repo/pkgs/icu/icu4c-52_1-src.tgz/9e96ed4c1d99c0d14ac03c140f9f346c/icu4c-52_1-src.tgz -o ../icu4c-52_1-src.tgz || exit 1
 
