@@ -1,15 +1,26 @@
 #!/bin/sh
 
-set -x
-
 export BUILDDIR=`pwd`
 
-NCPU=4
-uname -s | grep -i "linux" && NCPU=`cat /proc/cpuinfo | grep -c -i processor`
+if [ -z "$NCPU" ]
+then
+    NCPU=4
+    uname -s | grep -i "linux" \
+        && NCPU=`cat /proc/cpuinfo | grep -c -i processor`
+fi
 
-NDK=`which ndk-build`
-NDK=`dirname $NDK`
-NDK=`readlink -f $NDK`
+if [ -z "$NDK_ROOT" ]
+then
+    NDK_ROOT=`which ndk-build`
+    NDK_ROOT=`dirname $NDK`
+    NDK_ROOT=`readlink -f $NDK`
+fi
+
+if [ -z "$NDK_ROOT" ]
+then
+    echo "NDK_ROOT must be set to the directory containing Android's NDK"
+    exit 1
+fi
 
 for ARCH in armeabi armeabi-v7a x86 mips; do
 
@@ -22,7 +33,7 @@ cd $BUILDDIR/$ARCH
 [ -e libandroid_support.a ] || {
 mkdir -p android_support
 cd android_support
-ln -sf $NDK/sources/android/support jni
+ln -sf $NDK_ROOT/sources/android/support jni
 
 ndk-build -j$NCPU APP_ABI=$ARCH || exit 1
 cp -f obj/local/$ARCH/libandroid_support.a ../
@@ -46,7 +57,7 @@ cd $BUILDDIR/$ARCH
 	cp -f $BUILDDIR/config.sub libcharset/build-aux/
 	cp -f $BUILDDIR/config.guess libcharset/build-aux/
 
-	env CFLAGS="-I$NDK/sources/android/support/include" \
+	env CFLAGS="-I$NDK_ROOT/sources/android/support/include" \
 		LDFLAGS="-L$BUILDDIR/$ARCH -landroid_support" \
 		$BUILDDIR/setCrossEnvironment-$ARCH.sh \
 		./configure \
@@ -99,7 +110,7 @@ cd $BUILDDIR/$ARCH
 	sed -i "s@LD_SONAME *=.*@LD_SONAME =@g" config/mh-linux
 	sed -i "s%ln -s *%cp -f \$(dir \$@)/%g" config/mh-linux
 
-	env CFLAGS="-I$NDK/sources/android/support/include -frtti -fexceptions" \
+	env CFLAGS="-I$NDK_ROOT/sources/android/support/include -frtti -fexceptions" \
 		LDFLAGS="-frtti -fexceptions" \
 		LIBS="-L$BUILDDIR/$ARCH -landroid_support -lgnustl_static -lstdc++" \
 		$BUILDDIR/setCrossEnvironment-$ARCH.sh \
